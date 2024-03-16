@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Acyclic Degree-4-Regular Folding Patterns Simulator</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header id="main-header">
+        <h1>Acyclic Degree-4-Regular Folding Patterns Simulator</h1>
+    </header>
+    <div id="canvas-container"></div>
+    <div id="side-panel">
+        <!-- Add content for your side panel here -->
+        <div id="input-panel">
+          <button class = "upload" id = "upload">Upload FOLD</button>
+        </div>
+        <input type="file" id="fileInput" style="display: none;" accept=".fold">
+        <h2>Fold Parameters</h2>
+        <h3>Edge Selection</h3>
+        <p>Available Degree 4 Vertices:<p>
+        <p>Available Adjacent Vertices:<p>
+        <h3>Folding Angle [-&pi;, &pi;]</h3>
+        <div id="side-panel-model-display">
+          <h3 id = "labor-header">Vertices Locations</h3>
+          <div id="svg-container"></div>
+        </div>
+    </div>
+    
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js">
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@v0.156.1/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@v0.156.1/examples/jsm/"
+        }
+      }
+    </script> 
+
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>

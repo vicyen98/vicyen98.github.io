@@ -1,0 +1,56 @@
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+#canvas-container {
+    position: absolute;
+}
+
+#side-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 350px; /* Adjust the width according to your needs */
+    height: 100%;
+    background-color: #f0f0f0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#input-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 350px; /* Adjust the width according to your needs */
+    height: 100%;
+    background-color: none;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#upload {
+    position: absolute;
+    top: 42px;
+    left: 220px;
+}
+
+#labor-header {
+    position: absolute;
+    left: 20px;
+}
+
+#side-panel-model-display {
+    position: absolute;
+    top: 300px;
+    left: 0px;
+    width: 350px;
+    height: 500px;
+}
+
+#svg-container {
+    position: absolute;
+    top: 50px;
+    width: 350px;
+    height: 350px;
+}
