@@ -9,17 +9,19 @@ import { TrackballControls } from 'https://threejsfundamentals.org/threejs/resou
 // Global Variables
 let PI = 3.141592653589793238462643383279502884197;
 const targetAssignments = ["V", "M"];
+let centroidCoordinates = [];
 let FV = [];
 let FC = [];
 let userSelectedDegree4Node = null;
 let userSelectedDegree4VV = null;
-let userInputFoldingAngle = 0; // For future use
+let userInputR = null;
+let constraintEdge = [];
 let initialVerticesCoords = [];
 const radius = 10;
 const wordSizeSVG = 12;
 
 const ins = [
-  {id: "r", x: 30, y: 230, min: 1, max: 999, step: 1, val: 500},
+  {id: "r", x: 30, y: 230, min: 1, max: 99999, step: 1, val: 50000},
 ];
 
 // Functions
@@ -332,6 +334,35 @@ const resetVerticesCoords = () => {
   }
 };
 
+// Function to calculate the centroid of a list of points
+const calculateCentroid = (points) => {
+  const numOfPoints = points.length;
+  const dimensions = points[0].length;
+  const centroid = new THREE.Vector3();
+
+  for (let j = 0; j < dimensions; j++) {
+      let sum = 0;
+      for (let i = 0; i < numOfPoints; i++) {
+          sum += points[i][j];
+      }
+      centroid.setComponent(j, sum / numOfPoints);
+  }
+
+  return centroid;
+};
+
+// Function to shift the points to the origin and return a new array
+const shiftPointsToOrigin = (points) => {
+  const centroid = calculateCentroid(points);
+  const translation = centroid.negate(); // Invert the centroid vector
+
+  return points.map(point => [
+      point[0] + translation.x,
+      point[1] + translation.y,
+      point[2] + translation.z
+  ]);
+};
+
 const Y = {
   V_VV_EV_EA_2_VK_VA: (V, VV, EV, EA) => { //VA: Flat foldable degree 4 sector angle
     const VVA_map = new Map();
@@ -500,7 +531,13 @@ const generateSurfaceColors = (numSurfaces) => {
 };
 
 const setup = () =>{
-  ins[0].val = 500;
+  ins[0].val = 50000;
+  centroidCoordinates = [];
+  FV = [];
+  FC = [];
+  userSelectedDegree4Node = null;
+  userSelectedDegree4VV = null;
+  initialVerticesCoords = [];
   const canvasContainer = document.getElementById("canvas-container");
   while(canvasContainer.firstChild){
     canvasContainer.removeChild(canvasContainer.firstChild);
@@ -542,12 +579,13 @@ const setup = () =>{
   storeInitialVerticesCoords();
   canvasContainer.style.margin = 0;
   canvasContainer.style.padding = 0;
-  const [w, h] = [window.innerWidth, window.innerHeight];
+  const [w, h] = [window.innerWidth - 350, window.innerHeight];
   const scene = new THREE.Scene();
-  const s = 3;
+
+  const s = 1.8;
   const camera = new THREE.OrthographicCamera(-s, s, s*h/w, -s*h/w, 0, 2*s);
   camera.position.z = s;
-  const renderer = new THREE.WebGLRenderer();
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(w, h);
   renderer.setClearColor(0xf0f0f0);
   canvasContainer.appendChild(renderer.domElement);
@@ -719,7 +757,7 @@ const setup = () =>{
     return [selectedNode, arrangedSectorAngles, arrangedDegreeFourVV, arrangedVVEdgesAssignment];
   };
 
-  const degree4FoldingAngles = (arrangedSectorAngles, arrangedDegreeFourVV, arrangedVVAssignment, foldAngle) => {
+  const degree4FoldingAngles = (arrangedSectorAngles, arrangedDegreeFourVV, arrangedVVAssignment, foldAngle, selectedNode) => {
     let outputArrangedFoldingAngles = [];
     console.log('AnglesCalculation');
     console.log("inputSectorAnglesArray");
@@ -740,7 +778,11 @@ const setup = () =>{
     let [es1, es2, es3, es4] = [arrangedVVAssignment[0], arrangedVVAssignment[1], arrangedVVAssignment[2], arrangedVVAssignment[3]];
     console.log(`es1=${es1}; es2=${es2}; es3=${es3}; es4=${es4}`);
     // Calculating opposite angle a3 (theorem 3 equation 7)
-    let f3NA = 2 * Math.atan(Math.sqrt(2 * Math.pow(Math.tan(f1/2), 2) * Math.sin(a4) * Math.sin(a1) / (2 * Math.sin(a2) * Math.sin(a3) + Math.pow(Math.tan(f1/2), 2) * Math.cos(a2 - a3) - Math.pow(Math.tan(f1/2), 2) * Math.cos(a4 - a1))));
+    let f3NASQRT = 2 * Math.pow(Math.tan(f1/2), 2) * Math.sin(a4) * Math.sin(a1) / (2 * Math.sin(a2) * Math.sin(a3) + Math.pow(Math.tan(f1/2), 2) * Math.cos(a2 - a3) - Math.pow(Math.tan(f1/2), 2) * Math.cos(a4 - a1));
+    if(f3NASQRT < 0){
+      console.log(`Edge [${selectedNode}, ${arrangedDegreeFourVV[2]}] is not folding properly.`);
+    }
+    let f3NA = 2 * Math.atan(Math.sqrt(f3NASQRT));
     console.log(`f3Radian before assignment = ${f3NA}`);
     // Deciding the sign based on edges_assignment
     if(f1 >= 0){
@@ -775,7 +817,11 @@ const setup = () =>{
     }
     console.log(`f2Radian after assignment = ${f2}`);
     // Calculate f4
-    let f4NA = 2 * Math.atan(Math.sqrt(2 * Math.pow(Math.tan(f2/2), 2) * Math.sin(a1) * Math.sin(a2) / (2 * Math.sin(a3) * Math.sin(a4) + Math.pow(Math.tan(f2/2), 2) * Math.cos(a3 - a4) - Math.pow(Math.tan(f2/2), 2) * Math.cos(a1 - a2))));
+    let f4NASQRT = 2 * Math.pow(Math.tan(f2/2), 2) * Math.sin(a1) * Math.sin(a2) / (2 * Math.sin(a3) * Math.sin(a4) + Math.pow(Math.tan(f2/2), 2) * Math.cos(a3 - a4) - Math.pow(Math.tan(f2/2), 2) * Math.cos(a1 - a2));
+    if(f4NASQRT < 0){
+      console.log(`Edge [${selectedNode}, ${arrangedDegreeFourVV[3]}] is not folding properly.`);
+    }
+    let f4NA = 2 * Math.atan(Math.sqrt(f4NASQRT));
     console.log(`f4Radian before assignment = ${f4NA}`);
     if(f1 >= 0){
       if(es1 === es4){
@@ -895,7 +941,7 @@ const setup = () =>{
           let inputAngleIndex = parentArray.indexOf(node);
           let inputAngleValue = foldData.arrangedFoldingAngle[foldData.arrangedFoldingAngle.length - 1][inputAngleIndex];
           let [selectedNode, arrangedAngle,arrangedVV,arrangedVVAssignment] = rearrangeInputSectorAnglesArrayForFolding([node, previousNode]);
-          let outputArrangedFoldingAngles = degree4FoldingAngles(arrangedAngle, arrangedVV, arrangedVVAssignment, inputAngleValue);
+          let outputArrangedFoldingAngles = degree4FoldingAngles(arrangedAngle, arrangedVV, arrangedVVAssignment, inputAngleValue, selectedNode);
           let arrangedFVArray = findFacesVerticesByVertices(arrangedVV, selectedNode, box.faces_vertices);
           foldData.arrangedDegreeFourVV.push(arrangedVV);
           foldData.arrangedFoldingAngle.push(outputArrangedFoldingAngles);
@@ -932,7 +978,7 @@ const setup = () =>{
 
         } else if (previousNode === null){
           let [selectedNode, arrangedAngle,arrangedVV,arrangedVVAssignment] = rearrangeInputSectorAnglesArrayForFolding([node, firstEdgeNode]);
-          let outputArrangedFoldingAngles = degree4FoldingAngles(arrangedAngle, arrangedVV, arrangedVVAssignment, firstFoldingAngle);
+          let outputArrangedFoldingAngles = degree4FoldingAngles(arrangedAngle, arrangedVV, arrangedVVAssignment, firstFoldingAngle, selectedNode);
           let arrangedFVArray = findFacesVerticesByVertices(arrangedVV, selectedNode, box.faces_vertices);
           foldData.arrangedDegreeFourVV.push(arrangedVV);
           foldData.arrangedFoldingAngle.push(outputArrangedFoldingAngles);
@@ -1009,9 +1055,29 @@ const setup = () =>{
       let color = '#' + ((1 << 24) + (red << 16) + (green << 8) + blue).toString(16).slice(1); // Convert to hexadecimal representation
       polygon.setAttribute("fill", color);
       //polygon.setAttribute("fill-opacity", "0.8");
-      polygon.setAttribute("stroke", "black");
-      polygon.setAttribute("stroke-width", "2");
+      //polygon.setAttribute("stroke", "black");
+      //polygon.setAttribute("stroke-width", "2");
       svg.appendChild(polygon);
+    }
+
+    let EVSVG = substituteIndexes(shiftedRescaledVerticesCoordsSVG, box.edges_vertices);
+
+    for (let i = 0; i < EVSVG.length; i++) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", EVSVG[i][0][0]);
+      line.setAttribute("y1", EVSVG[i][0][1]);
+      line.setAttribute("x2", EVSVG[i][1][0]);
+      line.setAttribute("y2", EVSVG[i][1][1]);
+      line.setAttribute("stroke", "black");
+      if (box.edges_assignment[i] === "M") {
+        line.setAttribute("stroke-width", "2");
+      } else if (box.edges_assignment[i] === "V") {
+        line.setAttribute("stroke-width", "2");
+        line.setAttribute("stroke-dasharray", "10,5"); 
+      } else {
+        line.setAttribute("stroke-width", "1");
+      }
+      svg.appendChild(line);
     }
 
     for(let i = 0; i < shiftedRescaledVerticesCoordsSVG.length; i++){
@@ -1053,7 +1119,10 @@ const setup = () =>{
               .setFromEuler(new THREE.Euler(dy, dx, 0, 'XYZ'));
           scene.quaternion.multiplyQuaternions(rotation, scene.quaternion);
       }
-      FV = substituteIndexes(box.vertices_coords, box.faces_vertices);
+
+      // Add the shifting algorithm here
+      centroidCoordinates = shiftPointsToOrigin(box.vertices_coords);
+      FV = substituteIndexes(centroidCoordinates, box.faces_vertices);
       
       for (let i = 0; i < FV.length; ++i) {
           const [P, color] = [FV[i], FC[i]];
@@ -1073,7 +1142,7 @@ const setup = () =>{
           geometry.setIndex(indices);
 
           // Create a material with the specified color
-          const material = new THREE.MeshBasicMaterial({ color , transparent: true, opacity: 0.9, side: THREE.DoubleSide});
+          const material = new THREE.MeshBasicMaterial({color, transparent: true, opacity: 0.9, side: THREE.DoubleSide});
 
           // Create a mesh using the geometry and material
           const mesh = new THREE.Mesh(geometry, material);
@@ -1104,7 +1173,7 @@ const setup = () =>{
   for (const I of ins) {
     const {id, x, y, min, max, step, val} = I;
     const input = document.createElement("input");
-    input.style = `position: absolute; left: ${x}px; top: ${y}px;`;
+    input.style = `position: absolute; left: ${x}px; top: ${y}px; width: 280px`;
     input.type = "range";
     input.min = min;
     input.max = max;
@@ -1115,7 +1184,7 @@ const setup = () =>{
     input.oninput = () => {
         I.val = +document.getElementById("input_" + I.id).value;
         console.log(`input = ${I.val}`);
-        const r = ((I.val)/1000 - 0.5)*2*Math.PI;
+        const r = ((I.val)/100000 - 0.5)*2*Math.PI;
         console.log(`input folding angle in radian = ${r}`);
         // Reset box.vertices_coords
         resetVerticesCoords();
