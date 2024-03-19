@@ -283,7 +283,7 @@ export const X = {     // CONVERSION
     EV_FV_2_EF_FE: (EV, FV) => {
         const EV_map = new Map();
         for (const [i, V] of EV.entries()) {
-            EV_map.set(M.encode(V), i);
+            EV_map.set(M.encode_order_pair(V), i);
         }
         const EF = EV.map(() => [undefined, undefined]);
         for (const [i, F] of FV.entries()) {
